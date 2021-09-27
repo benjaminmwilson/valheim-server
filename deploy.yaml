@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: valheim-server-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: valheim-server
+  template:
+    metadata:
+      labels:
+        app: valheim-server
+    spec:
+      containers:
+      - name: valheim-server-container
+        imagePullPolicy: Always
+        image: bmwilson74/valheim-server:latest
+        volumeMounts:
+          - name: valheim-server-pvc
+            mountPath: /config
+          - name: valheim-server-eph
+            mountPath: /data
+        ports:
+        - protocol: UDP
+          containerPort: 2456
+          name: server-udp1
+        - protocol: UDP
+          containerPort: 2457
+          name: server-udp2
+        - protocol: UDP
+          containerPort: 2458
+          name: server-udp3                    
+      volumes:
+        - name: valheim-server-pvc
+          persistentVolumeClaim:
+            claimName: valheim-server-pvc
+        - name: valheim-server-eph
+          emptyDir: {}
+      nodeSelector:
+        cloud.google.com/gke-nodepool: game-servers-pool
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: valheim-server-service
+spec:
+  selector:
+    app: valheim-server
+  ports:
+  - protocol: UDP
+    targetPort: 2456
+    port: 2456
+    name: server-udp1
+  - protocol: UDP
+    targetPort: 2457
+    port: 2457
+    name: server-udp2
+  - protocol: UDP
+    targetPort: 2458
+    port: 2458
+    name: server-udp3
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: valheim-server-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
